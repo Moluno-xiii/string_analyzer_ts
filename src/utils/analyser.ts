@@ -1,7 +1,5 @@
 import { hash } from "crypto";
 
-// import stringRoute from "../routes/stringRoute";
-
 type StringProperties = {
   length: number;
   is_palindrome: boolean;
@@ -23,11 +21,12 @@ class StringAnalyzer {
   // constructor(public value: string) {}
 
   is_palindrome = (input: string): boolean => {
+    const sanitizedInput = this.sanitizeInput(input);
     let leftIndex = 0;
-    let rightIndex = input.length - 1;
+    let rightIndex = sanitizedInput.length - 1;
 
     while (leftIndex < rightIndex) {
-      if (input[leftIndex] !== input[rightIndex]) {
+      if (sanitizedInput[leftIndex] !== sanitizedInput[rightIndex]) {
         return false;
       }
       leftIndex++;
@@ -37,8 +36,12 @@ class StringAnalyzer {
     return true;
   };
 
+  private sanitizeInput = (input: string): string => {
+    return input.replace(/\s+/g, "").toLowerCase();
+  };
+
   unique_characters = (input: string): number => {
-    const sanitizedInput = input.replace(/\s+/g, "");
+    const sanitizedInput = this.sanitizeInput(input);
     const characters = sanitizedInput.split("");
     const uniqueCharacters = new Set(characters);
     return uniqueCharacters.size;
@@ -49,7 +52,7 @@ class StringAnalyzer {
   };
 
   character_frequency_mmap = (input: string): Record<string, number> => {
-    const sanitizedInput = input.replace(/\s+/g, "").toLowerCase();
+    const sanitizedInput = this.sanitizeInput(input);
     const inputCharacters = sanitizedInput.split("");
     const frequencyMap: Record<string, number> = {};
 
@@ -65,14 +68,14 @@ class StringAnalyzer {
   };
 
   sha256_hash = (input: string): string => {
-    return hash("sha-256", input);
+    return hash("sha256", input);
   };
 
   length = (input: string): number => {
     return input.length;
   };
 
-  storeAnalysedString = (input: string) => {
+  analyseString = (input: string) => {
     if (this.doesStringExist(input)) {
       throw new Error("This string already exists");
     }
@@ -91,27 +94,181 @@ class StringAnalyzer {
       created_at: new Date().toLocaleString(),
     };
 
-    this.stringStore.set(input, newAnalyzedString);
+    this.stringStore.set(input.toLowerCase(), newAnalyzedString);
     return newAnalyzedString;
   };
 
   doesStringExist = (input: string): boolean => {
-    return this.stringStore.has(input);
+    return this.stringStore.has(input.toLowerCase());
   };
 
   getString = (stringHash: string): AnalysedString | undefined => {
     return this.stringStore.get(stringHash);
   };
 
+  deleteString = (input: string): void => {
+    this.stringStore.delete(input.toLowerCase());
+  };
+
   getStore = (): Map<string, AnalysedString> => {
     return this.stringStore;
   };
+
+  matches = (criteria: Partial<SearchCriteria>): SearchResult => {
+    let matchedResults: AnalysedString[] = [];
+    this.stringStore.forEach((entry) => {
+      let matches = true;
+
+      if (
+        criteria.contains_character &&
+        !entry.value
+          .toLowerCase()
+          .includes(criteria.contains_character.toLowerCase())
+      ) {
+        matches = false;
+      }
+
+      if (
+        typeof criteria.is_palindrome == "boolean" &&
+        entry.properties.is_palindrome !== criteria.is_palindrome
+      ) {
+        matches = false;
+      }
+
+      if (
+        criteria.min_length &&
+        entry.properties.length < criteria.min_length
+      ) {
+        matches = false;
+      }
+
+      if (
+        criteria.max_length &&
+        entry.properties.length > criteria.max_length
+      ) {
+        matches = false;
+      }
+
+      if (
+        criteria.word_count &&
+        entry.properties.word_count !== criteria.word_count
+      ) {
+        matches = false;
+      }
+
+      if (matches) matchedResults.push(entry);
+    });
+
+    return {
+      data: matchedResults,
+      count: matchedResults.length,
+      filters_applied: criteria,
+    };
+  };
 }
+
+export const validateSearchParam = (
+  params: Partial<{
+    is_palindrome: any;
+    min_length: any;
+    max_length: any;
+    word_count: any;
+    contains_character: any;
+  }>
+): { success: boolean; errorMesage: string | null } => {
+  const {
+    is_palindrome,
+    min_length,
+    max_length,
+    word_count,
+    contains_character,
+  } = params;
+
+  if (is_palindrome && is_palindrome !== "true" && is_palindrome !== "false") {
+    return {
+      success: false,
+      errorMesage: `is_palindrome should be either (true or false), not ${is_palindrome}`,
+    };
+  }
+
+  if (min_length && isNaN(Number(min_length))) {
+    return {
+      success: false,
+      errorMesage: `min_length should be a number, not ${min_length}`,
+    };
+  }
+
+  if (max_length && isNaN(Number(max_length))) {
+    return {
+      success: false,
+      errorMesage: `max_length should be a number, not ${max_length}`,
+    };
+  }
+
+  if (word_count && isNaN(Number(word_count))) {
+    return {
+      success: false,
+      errorMesage: `word_count should be a number, not ${word_count}`,
+    };
+  }
+
+  if (contains_character && typeof contains_character !== "string") {
+    return {
+      success: false,
+      errorMesage: `contains_character should be a string, not ${typeof contains_character}`,
+    };
+  }
+
+  return { success: true, errorMesage: null };
+};
+
+type SearchCriteria = {
+  is_palindrome: boolean;
+  min_length: number;
+  max_length: number;
+  word_count: number;
+  contains_character: string;
+};
+
+type SearchResult = {
+  data: AnalysedString[];
+  count: number;
+  filters_applied: Partial<SearchCriteria>;
+};
 
 const stringAnalyser = new StringAnalyzer();
 
-export default stringAnalyser;
+stringAnalyser.analyseString("a mAN a plan a canal panama");
+stringAnalyser.analyseString("A dog a Panic a PagOda");
+stringAnalyser.analyseString("EViL is a name of a foeman as i live");
+stringAnalyser.analyseString(
+  "Doc note i dissent a fast never prevents a fatness i diet on cod"
+);
+stringAnalyser.analyseString("step on no pets");
+stringAnalyser.analyseString("never odd or even");
+stringAnalyser.analyseString("you banana boy");
+stringAnalyser.analyseString("madam in eden im adam");
+stringAnalyser.analyseString("do geese see god");
+stringAnalyser.analyseString("BoOb");
+// console.log(stringAnalyser.getStore());
+// {
+//   "data": [
+//     {
+//       "id": "hash1",
+//       "value": "string1",
+//       "properties": { /* ... */ },
+//       "created_at": "2025-08-27T10:00:00Z"
+//     },
+//     // ... more strings
+//   ],
+//   "count": 15,
+//   "filters_applied": {
+//     "is_palindrome": true,
+//     "min_length": 5,
+//     "max_length": 20,
+//     "word_count": 2,
+//     "contains_character": "a"
+//   }
+// }
 
-stringAnalyser.storeAnalysedString("string to analyze");
-stringAnalyser.storeAnalysedString("what happened to virgil?");
-console.log(stringAnalyser.getString("string to analyze"));
+export default stringAnalyser;
