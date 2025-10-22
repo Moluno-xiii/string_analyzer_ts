@@ -1,9 +1,31 @@
 import { Router, Request, Response, NextFunction } from "express";
-import stringAnalyser, { validateSearchParam } from "../utils/analyser";
+import stringAnalyser, {
+  getNaturalLanguageFilterCriteria,
+  validateSearchParam,
+} from "../utils/analyser";
 const stringRoute = Router();
 
+// json returned results before submission.
+const acceptableQueryFilters = [
+  "is_palindrome",
+  "min_length",
+  "max_length",
+  "word_count",
+  "contains_character",
+];
+
 stringRoute.get("/", (req: Request, res: Response, next: NextFunction) => {
+  console.log("I just got called");
   const queryData = req.query;
+  console.log(queryData);
+
+  for (const entry of Object.keys(queryData)) {
+    if (!acceptableQueryFilters.includes(entry)) {
+      return res.status(400).json({
+        message: `Invalid query filter parameter: ${entry}. Acceptable filter parameters : ${acceptableQueryFilters}`,
+      });
+    }
+  }
 
   const { errorMesage } = validateSearchParam(queryData);
 
@@ -11,24 +33,69 @@ stringRoute.get("/", (req: Request, res: Response, next: NextFunction) => {
     res.status(400).json(errorMesage);
     return;
   }
-  console.log("querydata", queryData);
-  const filterResults = stringAnalyser.matches({
-    ...queryData,
-    is_palindrome: queryData.is_palindrome == "true",
-    max_length: Number(queryData.max_length),
-    min_length: Number(queryData.min_length),
-    word_count: Number(queryData.word_count),
-  });
-  // const filterResults = stringAnalyser.matches({
-  //   contains_character: "Bo",
-  // });
 
-  res.json({ data: filterResults, params: queryData });
+  let filterResults;
+  if (Object.keys(queryData).length < 1) {
+    filterResults = stringAnalyser.matches({
+      min_length: 1,
+    });
+  } else {
+    filterResults = stringAnalyser.matches({
+      ...queryData,
+      is_palindrome: queryData.is_palindrome == "true",
+      max_length: queryData.max_length
+        ? Number(queryData.max_length)
+        : undefined,
+      min_length: queryData.min_length
+        ? Number(queryData.min_length)
+        : undefined,
+      word_count: queryData.word_count
+        ? Number(queryData.word_count)
+        : undefined,
+    });
+  }
+
+  res.json(filterResults);
 });
 
 stringRoute.get("/all", (req: Request, res: Response, next: NextFunction) => {
   res.json(Object.fromEntries(stringAnalyser.getStore()));
 });
+
+stringRoute.get(
+  "/filter-by-natural-language",
+  (req: Request, res: Response) => {
+    const { query } = req.query;
+
+    if (!query || (query && (query as string).trim().length < 1)) {
+      res.status(400).send("Unable to parse natural language query.");
+      return;
+    }
+
+    const tempQuery = "strings containing the letter y";
+    const filterCriteria = getNaturalLanguageFilterCriteria(
+      tempQuery as string
+    );
+
+    console.log("Filter criteria", filterCriteria);
+    if (filterCriteria.success === false) {
+      res.status(422).send("Query parsed but resulted in conflicting filters.");
+      return;
+    }
+
+    const result = stringAnalyser.matches(filterCriteria.criteria);
+
+    res.json({
+      data: result.data,
+      count: result.count,
+      interpreted_query: {
+        // change this
+        original: tempQuery,
+        parsed_filters: filterCriteria.criteria,
+      },
+    });
+  }
+);
 
 stringRoute.get("/:string", (req: Request, res: Response) => {
   const { string } = req.params;
@@ -69,15 +136,30 @@ stringRoute.post("/", (req: Request, res: Response, next: NextFunction) => {
 });
 
 stringRoute.delete("/:string", (req: Request, res: Response) => {
-  if (!stringAnalyser.doesStringExist(req.params.string)) {
-    res
-      .status(404)
-      .json({ message: `Value : ${req.params.string} doesn't exist.` });
+  const { string } = req.params;
+  if (!stringAnalyser.doesStringExist(string)) {
+    res.status(404).json({ message: `Value : ${string} doesn't exist.` });
     return;
   }
 
-  stringAnalyser.deleteString(req.params.string);
+  stringAnalyser.deleteString(string);
   res.status(204);
 });
 
 export default stringRoute;
+
+// "all single word palindromic strings" → word_count=1, is_palindrome=true
+// "strings longer than 10 characters" → min_length=11
+// "palindromic strings that contain the first vowel" → is_palindrome=true, contains_character=a (or similar heuristic)
+// "strings containing the letter z" → contains_character=z
+
+// {
+//   "data": [ /* array of matching strings */ ],
+//   "count": 3,
+//   "interpreted_query": {
+//     "original": "all single word palindromic strings",
+//     "parsed_filters": {
+//       "word_count": 1,
+//       "is_palindrome": true
+//     }
+//   }

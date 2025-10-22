@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "target": "es2016",
+    "target": "esnext",
     "module": "commonjs",
     "typeRoots": ["./types", "./node_modules/@types"],
     "esModuleInterop": true,

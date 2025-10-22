@@ -18,7 +18,6 @@ type AnalysedString = {
 
 class StringAnalyzer {
   private stringStore = new Map<string, AnalysedString>();
-  // constructor(public value: string) {}
 
   is_palindrome = (input: string): boolean => {
     const sanitizedInput = this.sanitizeInput(input);
@@ -250,6 +249,82 @@ stringAnalyser.analyseString("you banana boy");
 stringAnalyser.analyseString("madam in eden im adam");
 stringAnalyser.analyseString("do geese see god");
 stringAnalyser.analyseString("BoOb");
+stringAnalyser.analyseString("eKITike");
+stringAnalyser.analyseString("kooK");
+stringAnalyser.analyseString("zeez");
+stringAnalyser.analyseString("YanDHi");
+stringAnalyser.analyseString("My BeAutiful dark twisted fantasy");
+stringAnalyser.analyseString("Devil in a new dress");
+
+// GET /strings/filter-by-natural-language?query=all%20single%20word%20palindromic%20strings
+// "all single word palindromic strings" → word_count=1, is_palindrome=true
+// "strings longer than 10 characters" → min_length=11
+// "palindromic strings that contain the first vowel" → is_palindrome=true, contains_character=a (or similar heuristic)
+// "strings containing the letter z" → contains_character=z
+
+const vowelToNumbersMap: Record<NumberStringType, Vowel> = {
+  first: "a",
+  second: "e",
+  third: "e",
+  fourth: "o",
+  fifth: "u",
+};
+
+type NumberStringType = "first" | "second" | "third" | "fourth" | "fifth";
+type Vowel = "a" | "e" | "i" | "o" | "u";
+
+const getVowelByNumberString = (numberString: NumberStringType): Vowel => {
+  return vowelToNumbersMap[numberString];
+};
+
+export const getNaturalLanguageFilterCriteria = (
+  filterString: string
+):
+  | { success: true; criteria: Partial<SearchCriteria> }
+  | { success: false; errorMessage: string } => {
+  const lower = filterString.trim().toLowerCase();
+
+  if (lower.includes("single word palindromic")) {
+    return { criteria: { is_palindrome: true, word_count: 1 }, success: true };
+  }
+
+  if (lower.includes("strings longer than")) {
+    const words = lower.split(" ");
+    const number = words.at(3);
+    // const number = Number(words.find((w) => /^\d+$/.test(w)));
+    // if (!isNaN(Number(number))) {
+    //   return { min_length: number };
+    // }
+    return { criteria: { min_length: Number(number) + 1 }, success: true };
+  }
+
+  if (lower.includes("palindromic") && lower.includes("vowel")) {
+    const words = lower.split(" ");
+    const numberWord = words.find((w) =>
+      ["first", "second", "third", "fourth", "fifth"].includes(w)
+    ) as NumberStringType | undefined;
+
+    if (numberWord) {
+      const vowel = getVowelByNumberString(numberWord);
+      if (vowel) {
+        return {
+          success: true,
+          criteria: { is_palindrome: true, contains_character: vowel },
+        };
+      }
+    }
+  }
+
+  if (lower.includes("containing the letter")) {
+    const match = lower.match(/letter\s+([a-z])/);
+    if (match) {
+      return { success: true, criteria: { contains_character: match[1] } };
+    }
+  }
+
+  return { success: false, errorMessage: "Criteria not matched" };
+};
+
 // console.log(stringAnalyser.getStore());
 // {
 //   "data": [
