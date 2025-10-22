@@ -14,9 +14,7 @@ const acceptableQueryFilters = [
 ];
 
 stringRoute.get("/", (req: Request, res: Response, next: NextFunction) => {
-  console.log("I just got called");
   const queryData = req.query;
-  console.log(queryData);
 
   for (const entry of Object.keys(queryData)) {
     if (!acceptableQueryFilters.includes(entry)) {
@@ -41,7 +39,12 @@ stringRoute.get("/", (req: Request, res: Response, next: NextFunction) => {
   } else {
     filterResults = stringAnalyser.matches({
       ...queryData,
-      is_palindrome: queryData.is_palindrome == "true",
+      is_palindrome:
+        queryData.is_palindrome == "true"
+          ? true
+          : queryData.is_palindrome == "false"
+          ? false
+          : undefined,
       max_length: queryData.max_length
         ? Number(queryData.max_length)
         : undefined,
@@ -71,12 +74,8 @@ stringRoute.get(
       return;
     }
 
-    const tempQuery = "strings containing the letter y";
-    const filterCriteria = getNaturalLanguageFilterCriteria(
-      tempQuery as string
-    );
+    const filterCriteria = getNaturalLanguageFilterCriteria(query as string);
 
-    console.log("Filter criteria", filterCriteria);
     if (filterCriteria.success === false) {
       res.status(422).send("Query parsed but resulted in conflicting filters.");
       return;
