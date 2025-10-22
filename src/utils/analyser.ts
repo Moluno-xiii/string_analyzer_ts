@@ -256,12 +256,6 @@ stringAnalyser.analyseString("YanDHi");
 stringAnalyser.analyseString("My BeAutiful dark twisted fantasy");
 stringAnalyser.analyseString("Devil in a new dress");
 
-// GET /strings/filter-by-natural-language?query=all%20single%20word%20palindromic%20strings
-// "all single word palindromic strings" → word_count=1, is_palindrome=true
-// "strings longer than 10 characters" → min_length=11
-// "palindromic strings that contain the first vowel" → is_palindrome=true, contains_character=a (or similar heuristic)
-// "strings containing the letter z" → contains_character=z
-
 const vowelToNumbersMap: Record<NumberStringType, Vowel> = {
   first: "a",
   second: "e",
@@ -291,10 +285,6 @@ export const getNaturalLanguageFilterCriteria = (
   if (lower.includes("strings longer than")) {
     const words = lower.split(" ");
     const number = words.at(3);
-    // const number = Number(words.find((w) => /^\d+$/.test(w)));
-    // if (!isNaN(Number(number))) {
-    //   return { min_length: number };
-    // }
     return { criteria: { min_length: Number(number) + 1 }, success: true };
   }
 
@@ -324,26 +314,5 @@ export const getNaturalLanguageFilterCriteria = (
 
   return { success: false, errorMessage: "Criteria not matched" };
 };
-
-// console.log(stringAnalyser.getStore());
-// {
-//   "data": [
-//     {
-//       "id": "hash1",
-//       "value": "string1",
-//       "properties": { /* ... */ },
-//       "created_at": "2025-08-27T10:00:00Z"
-//     },
-//     // ... more strings
-//   ],
-//   "count": 15,
-//   "filters_applied": {
-//     "is_palindrome": true,
-//     "min_length": 5,
-//     "max_length": 20,
-//     "word_count": 2,
-//     "contains_character": "a"
-//   }
-// }
 
 export default stringAnalyser;

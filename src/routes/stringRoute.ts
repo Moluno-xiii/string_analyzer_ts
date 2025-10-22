@@ -5,7 +5,6 @@ import stringAnalyser, {
 } from "../utils/analyser";
 const stringRoute = Router();
 
-// json returned results before submission.
 const acceptableQueryFilters = [
   "is_palindrome",
   "min_length",
@@ -90,7 +89,7 @@ stringRoute.get(
       count: result.count,
       interpreted_query: {
         // change this
-        original: tempQuery,
+        original: query,
         parsed_filters: filterCriteria.criteria,
       },
     });
@@ -147,19 +146,3 @@ stringRoute.delete("/:string", (req: Request, res: Response) => {
 });
 
 export default stringRoute;
-
-// "all single word palindromic strings" → word_count=1, is_palindrome=true
-// "strings longer than 10 characters" → min_length=11
-// "palindromic strings that contain the first vowel" → is_palindrome=true, contains_character=a (or similar heuristic)
-// "strings containing the letter z" → contains_character=z
-
-// {
-//   "data": [ /* array of matching strings */ ],
-//   "count": 3,
-//   "interpreted_query": {
-//     "original": "all single word palindromic strings",
-//     "parsed_filters": {
-//       "word_count": 1,
-//       "is_palindrome": true
-//     }
-//   }
