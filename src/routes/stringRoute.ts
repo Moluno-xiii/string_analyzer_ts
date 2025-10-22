@@ -1,8 +1,9 @@
 import { Router, Request, Response, NextFunction } from "express";
-import stringAnalyser, {
-  getNaturalLanguageFilterCriteria,
+import stringAnalyser from "../utils/analyser";
+import {
   validateSearchParam,
-} from "../utils/analyser";
+  getNaturalLanguageFilterCriteria,
+} from "../utils/helpers";
 const stringRoute = Router();
 
 const acceptableQueryFilters = [
