@@ -61,10 +61,6 @@ stringRoute.get("/", (req: Request, res: Response, next: NextFunction) => {
   res.json(filterResults);
 });
 
-stringRoute.get("/all", (req: Request, res: Response, next: NextFunction) => {
-  res.json(Object.fromEntries(stringAnalyser.getStore()));
-});
-
 stringRoute.get(
   "/filter-by-natural-language",
   (req: Request, res: Response) => {
@@ -88,7 +84,6 @@ stringRoute.get(
       data: result.data,
       count: result.count,
       interpreted_query: {
-        // change this
         original: query,
         parsed_filters: filterCriteria.criteria,
       },
